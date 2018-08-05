@@ -1,6 +1,6 @@
 const { GraphQLServer } = require('graphql-yoga');
 const { MongoClient } = require('mongodb');
-const fetch = require('node-fetch');
+const githubAuth = require('./githubAuth');
 
 const port = 4000;
 const typeDefs = `
@@ -40,83 +40,6 @@ const typeDefs = `
     }
 
 `;
-
-const requestGithubToken = credentials =>
-    fetch('https://github.com/login/oauth/access_token',
-        {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            },
-            body: JSON.stringify(credentials)
-        }
-    ).then(res => res.json())
-        .catch(error => {
-            throw new Error(JSON.stringify(error))
-        });
-
-const requestGithubUserAccount = token =>
-    fetch(`https://api.github.com/user?access_token=${token}`)
-        .then(res => res.json())
-        .catch(error => {
-            throw new Error(JSON.stringify(error))
-        });
-
-async function authorizeWithGithub(credentials) {
-    const { access_token } = await requestGithubToken(credentials);
-    const githubUser = await requestGithubUserAccount(access_token);
-    console.log(githubUser);
-    return { ...githubUser, access_token };
-};
-
-async function githubAuth(root, { code }, { db }) {
-
-    // 1. Obtain data from GitHub
-    var {
-        message,
-        access_token,
-        avatar_url,
-        login,
-        name
-    } = await authorizeWithGithub({
-        client_id: "98eb59faa218d6188c0b",
-        client_secret: "03487d8522d6fb856216f132c497c6e04327a476",
-        code
-    });
-
-    // 2. If there is a message, something went wrong
-    if (message) {
-        throw new Error(message)
-    }
-
-    // 3. Package the results in a single object
-    var user = {
-        name,
-        githubLogin: login,
-        githubToken: access_token,
-        avatar: avatar_url
-    };
-
-    // 4. See if the account exists
-    var hasAccount = await db.collection('users').findOne({ githubLogin: login });
-
-    if (hasAccount) {
-
-        // 5. If so, update the record with the latest info
-        await db.collection('users').replaceOne({ githubLogin: login }, user);
-
-    } else {
-
-        // 6. If not, add the user
-        await db.collection('users').insert(user)
-
-    }
-
-    // 7. Return user data and their token
-    return { user, token: access_token }
-
-}
 
 const resolvers = {
     Query: {
