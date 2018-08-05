@@ -1,6 +1,7 @@
 const { GraphQLServer } = require('graphql-yoga');
 const { MongoClient } = require('mongodb');
 const githubAuth = require('./githubAuth');
+const postPhoto = require('./postPhoto');
 
 const port = 4000;
 const typeDefs = `
@@ -33,9 +34,14 @@ const typeDefs = `
         allUsers: [User!]!
         me: User
     }
+    
+    input PostPhotoInput {
+        name: String!
+        description: String
+    }
 
     type Mutation {
-        postPhoto(name: String! description: String): Photo!
+        postPhoto(input: PostPhotoInput!): Photo!
         githubAuth(code: String!): AuthPayload!
     }
 
@@ -57,16 +63,15 @@ const resolvers = {
 
         me: (parent, args, ctx) => ctx.user
     },
+    Photo: {
+        id: parent => parent.id || parent._id,
+        url: parent => `/img/photos/${parent._id}.jpg`,
+        postedBy: (parent, args, { db }) =>
+            db.collection('users').findOne({ githubLogin: parent.userID })
+    },
 
     Mutation: {
-        postPhoto(parent, args, ctx) {
-            const newPhoto = {
-                id: _id++,
-                ...args
-            };
-            ctx.db.insert(newPhoto);
-            return newPhoto
-        },
+        postPhoto: postPhoto,
         githubAuth: githubAuth
     }
 };
