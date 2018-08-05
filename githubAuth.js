@@ -39,8 +39,8 @@ async function githubAuth(root, { code }, { db }) {
         login,
         name
     } = await authorizeWithGithub({
-        client_id: "98eb59faa218d6188c0b",
-        client_secret: "03487d8522d6fb856216f132c497c6e04327a476",
+        client_id: "<client_id>",
+        client_secret: "<client_secret>",
         code
     });
 
